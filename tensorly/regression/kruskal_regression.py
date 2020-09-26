@@ -51,7 +51,7 @@ class KruskalRegressor():
             setattr(self, parameter, value)
         return self
 
-    def fit(self, X, y):
+    def fit(self, X, y, W=None):
         """Fits the model to the data (X, y)
 
         Parameters
@@ -60,17 +60,20 @@ class KruskalRegressor():
             tensor data of shape (n_samples, N1, ..., NS)
         y : 1D-array of shape (n_samples, )
             labels associated with each sample
+        W : list
+            list of initial covariates (S-entry list; each entry the size of N1, ..., NS)
 
         Returns
         -------
         self
         """
-        rng = check_random_state(self.random_state)
+        if W==None:  # Initialize randomly if W is not provided
+            rng = check_random_state(self.random_state)
 
-        # Initialise randomly the weights
-        W = []
-        for i in range(1, T.ndim(X)):  # The first dimension of X is the number of samples
-            W.append(T.tensor(rng.randn(X.shape[i], self.weight_rank), **T.context(X)))
+            # Initialise randomly the weights
+            W = []
+            for i in range(1, T.ndim(X)):  # The first dimension of X is the number of samples
+                W.append(T.tensor(rng.randn(X.shape[i], self.weight_rank), **T.context(X)))
 
         # Norm of the weight tensor at each iteration
         norm_W = []
