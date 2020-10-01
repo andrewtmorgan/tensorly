@@ -90,12 +90,16 @@ class KruskalRegressor():
                       (X.shape[0], -1))
                 
                 # 
-                if phi.shape[1]==8:
-                    asd = ln.ASD(D=D)
+                if phi.shape[1]==8:  # There should be a better way
+                    asd = ln.ASD(D=D,
+                                 init_coef=W[i].squeeze(),
+                                 init_intercept=0)
                 else:
-                    asd = ln.ASD(D=(phi.shape[1], 1))
+                    asd = ln.ASD(D=(phi.shape[1], 1),
+                                 init_coef=W[i].squeeze(),
+                                 init_intercept=0)
                 asd.fit(phi, y)
-                W[i] = asd.coef_
+                W[i] = asd.coef_[:, None]
 
             weight_tensor_ = kruskal_to_tensor((weights, W))
             norm_W.append(T.norm(weight_tensor_, 2))
