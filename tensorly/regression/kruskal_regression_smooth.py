@@ -93,12 +93,12 @@ class KruskalRegressor():
                 if phi.shape[1]==8:  # There should be a better way
                     asd = ln.ASD(D=D,
                                  init_coef=W[i].squeeze(),
-                                 init_intercept=0,
+                                 fit_intercept=False,
                                  verbose=False)
                 else:
                     asd = ln.ASD(D=(phi.shape[1], 1),
                                  init_coef=W[i].squeeze(),
-                                 init_intercept=0,
+                                 fit_intercept=False,
                                  verbose=False)
                 asd.fit(phi, y)
                 W[i] = asd.coef_[:, None]
