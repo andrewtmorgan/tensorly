@@ -52,7 +52,7 @@ class KruskalRegressor():
             setattr(self, parameter, value)
         return self
 
-    def fit(self, X, y, W=None):
+    def fit(self, X, y, W=None, D=np.zeros((8,1))):
         """Fits the model to the data (X, y)
 
         Parameters
