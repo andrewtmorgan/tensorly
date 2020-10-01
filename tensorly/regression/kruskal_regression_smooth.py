@@ -80,6 +80,9 @@ class KruskalRegressor():
         norm_W = []
         weights = T.ones(self.weight_rank, **T.context(X))
 
+        # Need an intercept
+        intercept = 0.0
+
         for iteration in range(self.n_iter_max):
 
             # Optimise each factor of W
@@ -93,15 +96,16 @@ class KruskalRegressor():
                 if phi.shape[1]==8:  # There should be a better way
                     asd = ln.ASD(D=D,
                                  init_coef=W[i].squeeze(),
-                                 fit_intercept=False,
+                                 fit_intercept=True,
                                  verbose=False)
                 else:
                     asd = ln.ASD(D=(phi.shape[1], 1),
                                  init_coef=W[i].squeeze(),
-                                 fit_intercept=False,
+                                 fit_intercept=True,
                                  verbose=False)
-                asd.fit(phi, y)
+                asd.fit(phi, y - intercept)
                 W[i] = asd.coef_[:, None]
+                intercept = asd.intercept_
 
             weight_tensor_ = kruskal_to_tensor((weights, W))
             norm_W.append(T.norm(weight_tensor_, 2))
@@ -117,6 +121,7 @@ class KruskalRegressor():
 
         self.weight_tensor_ = weight_tensor_
         self.kruskal_weight_ = (weights, W)
+        self.intercept_ = intercept
 
         self.vec_W_ = kruskal_to_vec((weights, W))
         self.n_iterations_ = iteration + 1
