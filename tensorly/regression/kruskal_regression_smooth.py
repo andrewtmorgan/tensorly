@@ -5,6 +5,8 @@ from ..kruskal_tensor import kruskal_to_tensor, kruskal_to_vec
 from ..random import check_random_state
 from .. import backend as T
 from lnpy import linear as ln
+from tqdm import tqdm
+from tqdm import trange
 
 # Author: Jean Kossaifi
 
@@ -83,7 +85,7 @@ class KruskalRegressor():
         # Need an intercept
         intercept = 0.0
 
-        for iteration in range(self.n_iter_max):
+        for iteration in trange(self.n_iter_max):
 
             # Optimise each factor of W
             for i in range(len(W)):
