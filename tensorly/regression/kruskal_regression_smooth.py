@@ -95,18 +95,17 @@ class KruskalRegressor():
                       (X.shape[0], -1))
                 
                 #  
-                if phi.shape[1]==8:  # There should be a better way
-                    #asd = ln.ASD(D=D,
-                    #             init_coef=W[i].squeeze(),
-                    #             fit_intercept=True,
-                    #             verbose=False)
-                    ridge = ln.SmoothRidge(D=D, verbose=False)
+                if i==0:  # There should be a better way
+                    ridge = ln.SmoothRidge(D=D,
+                                           verbose=False)
+                elif i==1:
+                    ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
+                                           second_order=False,
+                                           verbose=False)
                 else:
-                    #asd = ln.ASD(D=(phi.shape[1], 1),
-                    #             init_coef=W[i].squeeze(),
-                    #             fit_intercept=True,
-                    #             verbose=False)
-                    ridge = ln.SmoothRidge(D=(phi.shape[1], 1), verbose=False)
+                    ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
+                                           second_order=True,
+                                           verbose=False)
                 ridge.fit(phi, y)
                 W[i] = ridge.coef_[:, None]
                 intercept = ridge.intercept_
