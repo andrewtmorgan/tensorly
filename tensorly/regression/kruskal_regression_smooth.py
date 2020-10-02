@@ -92,20 +92,22 @@ class KruskalRegressor():
                                 khatri_rao(W, skip_matrix=i)),
                       (X.shape[0], -1))
                 
-                # 
+                #  
                 if phi.shape[1]==8:  # There should be a better way
-                    asd = ln.ASD(D=D,
-                                 init_coef=W[i].squeeze(),
-                                 fit_intercept=True,
-                                 verbose=False)
+                    #asd = ln.ASD(D=D,
+                    #             init_coef=W[i].squeeze(),
+                    #             fit_intercept=True,
+                    #             verbose=False)
+                    ridge = ln.SmoothRidge(D=D, verbose=False)
                 else:
-                    asd = ln.ASD(D=(phi.shape[1], 1),
-                                 init_coef=W[i].squeeze(),
-                                 fit_intercept=True,
-                                 verbose=False)
-                asd.fit(phi, y - intercept)
-                W[i] = asd.coef_[:, None]
-                intercept = asd.intercept_
+                    #asd = ln.ASD(D=(phi.shape[1], 1),
+                    #             init_coef=W[i].squeeze(),
+                    #             fit_intercept=True,
+                    #             verbose=False)
+                    ridge = ln.SmoothRidge(D=(phi.shape[1], 1), verbose=False)
+                ridge.fit(phi, y)
+                W[i] = ridge.coef_[:, None]
+                intercept = ridge.intercept_
 
             weight_tensor_ = kruskal_to_tensor((weights, W))
             norm_W.append(T.norm(weight_tensor_, 2))
