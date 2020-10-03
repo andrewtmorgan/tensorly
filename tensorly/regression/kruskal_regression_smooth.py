@@ -5,8 +5,10 @@ from ..kruskal_tensor import kruskal_to_tensor, kruskal_to_vec
 from ..random import check_random_state
 from .. import backend as T
 from lnpy import linear as ln
+from lmfit import Model
 from tqdm import tqdm
 from tqdm import trange
+
 
 # Author: Jean Kossaifi
 
@@ -85,6 +87,19 @@ class KruskalRegressor():
         # Need an intercept
         intercept = 0.0
 
+        # functions for fitting spatial gaussians
+        def gauss_b(x, amp, cen, wid):
+            tmp = np.arange(27)
+            gauss = amp * np.exp(-(tmp - cen)**2 / wid)
+            b = np.concatenate((gauss, np.array([1.0])), axis=0)
+            x2 = np.concatenate((x, np.ones((x.shape[0],1))), axis=1)
+            return x2.dot(b)
+
+
+        def gaussian(x, amp, cen, wid):
+            return amp * np.exp(-(x-cen)**2 / wid)
+
+
         for iteration in trange(self.n_iter_max):
 
             # Optimise each factor of W
@@ -98,17 +113,39 @@ class KruskalRegressor():
                 if i==0:  # There should be a better way
                     ridge = ln.SmoothRidge(D=D,
                                            verbose=False)
+                    ridge.fit(phi, y)
+                    W[i] = ridge.coef_[:, None]
+                    intercept = ridge.intercept_ 
+
                 elif i==1:
                     ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
                                            second_order=False,
                                            verbose=False)
+                    ridge.fit(phi, y)
+                    W[i] = ridge.coef_[:, None]
+                    intercept = ridge.intercept_ 
+
+                elif i<4:
+                    gmodel = Model(gauss_b)
+                    result = gmodel.fit(y, x=phi, 
+                                        amp=0.1, cen=13, wid=14,
+                                        verbose=False)
+                    tmp_b = gaussian(np.arange(27),
+                                     result.params['amp'].value,
+                                     result.params['cen'].value,
+                                     result.params['wid'].value)
+                    W[i] = tmp_b[:, None]
+
                 else:
                     ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
-                                           second_order=False,
+                                           zero_order=True
+                                           first_order=True
+                                           second_order=True,
                                            verbose=False)
-                ridge.fit(phi, y)
-                W[i] = ridge.coef_[:, None]
-                intercept = ridge.intercept_
+                    ridge.fit(phi, y)
+                    W[i] = ridge.coef_[:, None]
+                    intercept = ridge.intercept_ 
+                
 
             weight_tensor_ = kruskal_to_tensor((weights, W))
             norm_W.append(T.norm(weight_tensor_, 2))
