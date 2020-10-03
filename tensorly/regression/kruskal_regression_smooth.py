@@ -104,7 +104,7 @@ class KruskalRegressor():
                                            verbose=False)
                 else:
                     ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
-                                           second_order=True,
+                                           second_order=False,
                                            verbose=False)
                 ridge.fit(phi, y)
                 W[i] = ridge.coef_[:, None]
