@@ -88,16 +88,60 @@ class KruskalRegressor():
         intercept = 0.0
 
         # functions for fitting spatial gaussians
-        def gauss_b(x, amp, cen, wid):
-            tmp = np.arange(27)
-            gauss = amp * np.exp(-(tmp - cen)**2 / wid)
-            b = np.concatenate((gauss, np.array([1.0])), axis=0)
-            x2 = np.concatenate((x, np.ones((x.shape[0],1))), axis=1)
-            return x2.dot(b)
+        def solve_ald(x, y, cen, sig, rho, delta, nv):
+
+            tmp_gauss = gaussian(np.arange(0, 27, 0.5), cen, sig, 1)
+            cov_sp = np.zeros((27,27))
+            for cc in range(27):
+                np.fill_diagonal(cov_sp[cc:], tmp_gauss[cc:-cc:2])
+                np.fill_diagonal(cov_sp[:,cc:], tmp_gauss[cc:-cc:2])
+            np.fill_diagonal(cov_sp, tmp_gauss[::2])
+
+            dist_mat = np.zeros((27,27))
+            for cc in range(1, 27):
+                np.fill_diagonal(dist_mat[cc:], np.ones((27-cc, 1))*(cc**2))
+                np.fill_diagonal(dist_mat[:,cc:], np.ones((27-cc, 1))*(cc**2))
+            cov_sm = np.exp(-rho - (dist_mat / delta**2))
+
+            cov = cov_sm * cov_sp
+            npad = ((0, 1), (0, 1))
+            cov = np.pad(cov, pad_width=npad, mode='constant', constant_values=0)
+
+            x = np.concatenate((x, np.ones((x.shape[0], 1))), axis=1)
+            CXX = cov.dot(x.T).dot(x)
+            XY = x.T.dot(y)
+            YY = y.T.dot(y)
+
+            lamb = np.linalg.solve((1./nv)*CXX + np.eye(28), cov)
+            lamb_inv = np.linalg.pinv(lamb)
+            mu = np.linalg.solve(CXX + nv*np.eye(28) , cov).dot(XY)
+
+            return mu, lamb, lamb_inv, cov
 
 
-        def gaussian(x, amp, cen, wid):
-            return amp * np.exp(-(x-cen)**2 / wid)
+        def logevid(pars, x, y):
+
+            # unpack parameters: extract .value attribute for each parameter
+            parvals = pars.valuesdict()
+            cen = parvals['cen']
+            sig = parvals['sig']
+            rho = parvals['rho']
+            delta = parvals['delta']
+            nv = parvals['nv']
+
+            mu, lamb, lamb_inv, cov = solve_ald(x, y, cen, sig, rho, delta, nv)
+            YY = y.T.dot(y)
+
+            evid = (-y.size/2)*np.log(2*np.pi*nv) - \
+                   0.5 * np.log(cov.dot(lamb_inv)) + \
+                   0.5 * mu.T.dot(lamb_inv).dot(mu) - \
+                   (1/(2*nv)) * YY
+            return -evid
+        
+
+        def gaussian(x, mu, sig, sc):
+            tmp = np.exp(-np.power(x - mu, 2.) / (2 * np.power(sig, 2.)))
+            return tmp*sc
 
 
         for iteration in trange(self.n_iter_max):
@@ -126,15 +170,26 @@ class KruskalRegressor():
                     intercept = ridge.intercept_ 
 
                 elif i<4:
-                    gmodel = Model(gauss_b)
-                    result = gmodel.fit(y, x=phi, 
-                                        amp=0.1, cen=13, wid=14,
-                                        verbose=False)
-                    tmp_b = gaussian(np.arange(27),
-                                     result.params['amp'].value,
-                                     result.params['cen'].value,
-                                     result.params['wid'].value)
-                    W[i] = tmp_b[:, None]
+                    # get initial
+                    ridge = ln.Ridge(verbose=False)
+                    ridge.fit(phi, y)
+
+                    # set parameters
+                    params = lmfit.Parameters()
+                    params['cen'] = lmfit.Parameter(value=13, min=7, max=19)
+                    params['sig'] = lmfit.Parameter(value=4, min=2, max=9)
+                    params['rho'] = lmfit.Parameter(value=-np.log(ridge.alpha), min=-20, max=20)
+                    params['delta'] = lmfit.Parameter(value=1., min=-10e6, max=10e6)
+                    params['nv'] = lmfit.Parameter(value=ridge.noisevar, min=10e-7, max=10)
+                    
+                    # solve
+                    out = lmfit.minimize(logevid, params, args=(phi, y))
+                    mu, _, _, _ = solve_ald(phi, y, out.params['cen'].value,
+                                                    out.params['sig'].value,
+                                                    out.params['rho'].value, 
+                                                    out.params['delta'].value,
+                                                    out.params['nv'].value)
+                    W[i] = mu[:-1]
 
                 else:
                     ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
