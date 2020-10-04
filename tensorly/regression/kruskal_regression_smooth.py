@@ -189,7 +189,7 @@ class KruskalRegressor():
                                                     out.params['rho'].value, 
                                                     out.params['delta'].value,
                                                     out.params['nv'].value)
-                    W[i] = mu[:-1]
+                    W[i] = mu[:-1,None]
 
                 else:
                     ridge = ln.SmoothRidge(D=(phi.shape[1], 1),
