@@ -5,7 +5,7 @@ from ..kruskal_tensor import kruskal_to_tensor, kruskal_to_vec
 from ..random import check_random_state
 from .. import backend as T
 from lnpy import linear as ln
-importe lmfit
+import lmfit
 from tqdm import tqdm
 from tqdm import trange
 
